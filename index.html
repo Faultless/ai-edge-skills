@@ -1,0 +1,140 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>AI Edge Gallery Skills</title>
+    <style>
+      * { margin: 0; padding: 0; box-sizing: border-box; }
+      body {
+        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto,
+          Helvetica, Arial, sans-serif;
+        background: #0d1117;
+        color: #c9d1d9;
+        min-height: 100vh;
+        display: flex;
+        justify-content: center;
+        padding: 40px 20px;
+      }
+      .container { max-width: 640px; width: 100%; }
+      h1 {
+        font-size: 28px;
+        font-weight: 700;
+        color: #f0f6fc;
+        margin-bottom: 8px;
+      }
+      .subtitle {
+        font-size: 16px;
+        color: #8b949e;
+        margin-bottom: 32px;
+      }
+      .skill-card {
+        background: #161b22;
+        border: 1px solid #30363d;
+        border-radius: 8px;
+        padding: 20px;
+        margin-bottom: 16px;
+      }
+      .skill-card h2 {
+        font-size: 20px;
+        color: #58a6ff;
+        margin-bottom: 8px;
+      }
+      .skill-card p {
+        font-size: 14px;
+        line-height: 1.6;
+        color: #8b949e;
+        margin-bottom: 12px;
+      }
+      .badge {
+        display: inline-block;
+        font-size: 11px;
+        font-weight: 600;
+        padding: 2px 8px;
+        border-radius: 12px;
+        margin-right: 6px;
+      }
+      .badge-js { background: #0a9396; color: #fff; }
+      .badge-api { background: #2dc653; color: #fff; }
+      .badge-webview { background: #ee9b00; color: #fff; }
+      .badge-secret { background: #f72585; color: #fff; }
+      .badge-camera { background: #656d4a; color: #fff; }
+      code {
+        background: #0d1117;
+        border: 1px solid #30363d;
+        padding: 2px 6px;
+        border-radius: 4px;
+        font-size: 13px;
+      }
+      .instructions {
+        margin-top: 24px;
+        padding: 16px;
+        background: #161b22;
+        border: 1px solid #30363d;
+        border-radius: 8px;
+        font-size: 14px;
+        line-height: 1.7;
+      }
+      .instructions h3 {
+        color: #f0f6fc;
+        margin-bottom: 8px;
+      }
+      .instructions ol { padding-left: 20px; }
+      .instructions li { margin-bottom: 6px; }
+      a { color: #58a6ff; text-decoration: none; }
+      a:hover { text-decoration: underline; }
+    </style>
+  </head>
+  <body>
+    <div class="container">
+      <h1>AI Edge Gallery Skills</h1>
+      <p class="subtitle">
+        Custom skills for the
+        <a href="https://github.com/google-ai-edge/gallery">Google AI Edge Gallery</a>
+        app, hosted via GitHub Pages.
+      </p>
+
+      <div class="skill-card">
+        <h2>Food Macro Tracker</h2>
+        <p>
+          Analyze food from a photo or ingredient list to estimate calories,
+          protein, fat, and carbs using the Spoonacular API. Send a picture of
+          your meal or type your ingredients, and the on-device Gemma model will
+          identify the food and call the Spoonacular API to return a full
+          nutrition breakdown.
+        </p>
+        <span class="badge badge-js">JS</span>
+        <span class="badge badge-api">API</span>
+        <span class="badge badge-webview">Webview</span>
+        <span class="badge badge-secret">Secret</span>
+        <span class="badge badge-camera">Camera</span>
+      </div>
+
+      <div class="instructions">
+        <h3>How to use</h3>
+        <ol>
+          <li>
+            Open the <strong>AI Edge Gallery</strong> app and enter the
+            <em>Agent Skills</em> use case.
+          </li>
+          <li>
+            Tap the <strong>Skills</strong> chip, then the <strong>(+)</strong>
+            button, and select <strong>Load skill from URL</strong>.
+          </li>
+          <li>
+            Enter the URL pointing to the skill folder, e.g.<br />
+            <code>https://&lt;username&gt;.github.io/ai-edge-skills/food-macro-tracker</code>
+          </li>
+          <li>
+            When prompted, enter your
+            <a href="https://spoonacular.com/food-api">Spoonacular API key</a>.
+          </li>
+          <li>
+            Take a photo of food or type ingredients like
+            <em>"2 cups rice, 1 lb chicken breast, 1 tbsp olive oil"</em>.
+          </li>
+        </ol>
+      </div>
+    </div>
+  </body>
+</html>

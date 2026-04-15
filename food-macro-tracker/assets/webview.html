@@ -1,0 +1,312 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Nutrition Breakdown</title>
+    <style>
+      * {
+        margin: 0;
+        padding: 0;
+        box-sizing: border-box;
+      }
+
+      body {
+        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto,
+          Helvetica, Arial, sans-serif;
+        background: #f8f9fa;
+        color: #212529;
+        padding: 16px;
+      }
+
+      .card {
+        background: #fff;
+        border-radius: 12px;
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+        padding: 20px;
+        margin-bottom: 16px;
+      }
+
+      .card-title {
+        font-size: 18px;
+        font-weight: 700;
+        margin-bottom: 16px;
+        color: #1a1a2e;
+      }
+
+      /* Total macros grid */
+      .macro-grid {
+        display: grid;
+        grid-template-columns: repeat(2, 1fr);
+        gap: 12px;
+      }
+
+      .macro-item {
+        text-align: center;
+        padding: 12px 8px;
+        border-radius: 10px;
+      }
+
+      .macro-item.calories {
+        background: #fff3e0;
+      }
+      .macro-item.protein {
+        background: #e8f5e9;
+      }
+      .macro-item.fat {
+        background: #fce4ec;
+      }
+      .macro-item.carbs {
+        background: #e3f2fd;
+      }
+      .macro-item.fiber {
+        background: #f3e5f5;
+      }
+      .macro-item.sugar {
+        background: #fff8e1;
+      }
+
+      .macro-value {
+        font-size: 26px;
+        font-weight: 800;
+        line-height: 1.2;
+      }
+
+      .macro-label {
+        font-size: 12px;
+        font-weight: 600;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+        margin-top: 4px;
+        opacity: 0.7;
+      }
+
+      .calories .macro-value {
+        color: #e65100;
+      }
+      .protein .macro-value {
+        color: #2e7d32;
+      }
+      .fat .macro-value {
+        color: #c62828;
+      }
+      .carbs .macro-value {
+        color: #1565c0;
+      }
+      .fiber .macro-value {
+        color: #7b1fa2;
+      }
+      .sugar .macro-value {
+        color: #f9a825;
+      }
+
+      /* Donut chart */
+      .chart-container {
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        margin: 16px 0;
+      }
+
+      .donut-chart {
+        width: 160px;
+        height: 160px;
+      }
+
+      .donut-label {
+        display: flex;
+        justify-content: center;
+        gap: 16px;
+        flex-wrap: wrap;
+        margin-top: 8px;
+      }
+
+      .donut-label-item {
+        display: flex;
+        align-items: center;
+        gap: 4px;
+        font-size: 12px;
+        font-weight: 600;
+      }
+
+      .donut-label-dot {
+        width: 10px;
+        height: 10px;
+        border-radius: 50%;
+      }
+
+      /* Ingredient list */
+      .ingredient-list {
+        list-style: none;
+      }
+
+      .ingredient-list li {
+        padding: 10px 0;
+        border-bottom: 1px solid #eee;
+        font-size: 14px;
+      }
+
+      .ingredient-list li:last-child {
+        border-bottom: none;
+      }
+
+      .ingredient-name {
+        font-weight: 600;
+        display: block;
+        margin-bottom: 2px;
+      }
+
+      .ingredient-macros {
+        font-size: 12px;
+        color: #666;
+      }
+
+      .no-data {
+        text-align: center;
+        padding: 40px 20px;
+        color: #999;
+        font-size: 16px;
+      }
+    </style>
+  </head>
+  <body>
+    <div id="content">
+      <div class="no-data">Loading nutrition data...</div>
+    </div>
+
+    <script>
+      function render() {
+        const params = new URLSearchParams(window.location.search);
+        const raw = params.get("data");
+
+        if (!raw) {
+          document.getElementById("content").innerHTML =
+            '<div class="no-data">No nutrition data available.</div>';
+          return;
+        }
+
+        let data;
+        try {
+          data = JSON.parse(raw);
+        } catch (e) {
+          document.getElementById("content").innerHTML =
+            '<div class="no-data">Failed to parse nutrition data.</div>';
+          return;
+        }
+
+        // Extract numeric values for the chart
+        const protein = parseFloat(data.totalProtein) || 0;
+        const fat = parseFloat(data.totalFat) || 0;
+        const carbs = parseFloat(data.totalCarbs) || 0;
+        const total = protein + fat + carbs;
+
+        // Build donut chart SVG
+        let donutSvg = "";
+        if (total > 0) {
+          const segments = [
+            { value: protein, color: "#4caf50", label: "Protein" },
+            { value: fat, color: "#ef5350", label: "Fat" },
+            { value: carbs, color: "#42a5f5", label: "Carbs" },
+          ];
+
+          const radius = 60;
+          const circumference = 2 * Math.PI * radius;
+          let offset = 0;
+
+          let paths = "";
+          for (const seg of segments) {
+            const pct = seg.value / total;
+            const dash = pct * circumference;
+            const gap = circumference - dash;
+            paths +=
+              '<circle cx="80" cy="80" r="' + radius + '" ' +
+              'fill="none" stroke="' + seg.color + '" stroke-width="20" ' +
+              'stroke-dasharray="' + dash + " " + gap + '" ' +
+              'stroke-dashoffset="' + -offset + '" ' +
+              'transform="rotate(-90 80 80)" />';
+            offset += dash;
+          }
+
+          donutSvg =
+            '<div class="chart-container">' +
+            '<svg class="donut-chart" viewBox="0 0 160 160">' +
+            paths +
+            '<text x="80" y="76" text-anchor="middle" font-size="22" font-weight="800" fill="#333">' +
+            data.totalCalories +
+            "</text>" +
+            '<text x="80" y="94" text-anchor="middle" font-size="11" fill="#888">kcal</text>' +
+            "</svg></div>" +
+            '<div class="donut-label">' +
+            segments
+              .map(
+                (s) =>
+                  '<span class="donut-label-item">' +
+                  '<span class="donut-label-dot" style="background:' + s.color + '"></span>' +
+                  s.label + " " + Math.round((s.value / total) * 100) + "%" +
+                  "</span>"
+              )
+              .join("") +
+            "</div>";
+        }
+
+        // Build ingredient breakdown
+        let ingredientHtml = "";
+        if (data.ingredients && data.ingredients.length > 0) {
+          ingredientHtml =
+            '<div class="card">' +
+            '<div class="card-title">Per Ingredient</div>' +
+            '<ul class="ingredient-list">' +
+            data.ingredients
+              .map(
+                (i) =>
+                  "<li>" +
+                  '<span class="ingredient-name">' +
+                  escapeHtml(i.name) +
+                  " (" + i.amount + " " + escapeHtml(i.unit) + ")" +
+                  "</span>" +
+                  '<span class="ingredient-macros">' +
+                  i.calories + " kcal &middot; " +
+                  i.protein + " protein &middot; " +
+                  i.fat + " fat &middot; " +
+                  i.carbs + " carbs" +
+                  "</span>" +
+                  "</li>"
+              )
+              .join("") +
+            "</ul></div>";
+        }
+
+        document.getElementById("content").innerHTML =
+          '<div class="card">' +
+          '<div class="card-title">Total Nutrition</div>' +
+          donutSvg +
+          '<div class="macro-grid">' +
+          macroBox("calories", "Calories", data.totalCalories + " kcal") +
+          macroBox("protein", "Protein", data.totalProtein) +
+          macroBox("fat", "Fat", data.totalFat) +
+          macroBox("carbs", "Carbs", data.totalCarbs) +
+          macroBox("fiber", "Fiber", data.totalFiber) +
+          macroBox("sugar", "Sugar", data.totalSugar) +
+          "</div></div>" +
+          ingredientHtml;
+      }
+
+      function macroBox(cls, label, value) {
+        return (
+          '<div class="macro-item ' + cls + '">' +
+          '<div class="macro-value">' + escapeHtml(String(value)) + "</div>" +
+          '<div class="macro-label">' + label + "</div>" +
+          "</div>"
+        );
+      }
+
+      function escapeHtml(text) {
+        var div = document.createElement("div");
+        div.appendChild(document.createTextNode(text));
+        return div.innerHTML;
+      }
+
+      render();
+    </script>
+  </body>
+</html>

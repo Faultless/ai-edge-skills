@@ -1,0 +1,217 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Food Macro Tracker</title>
+  </head>
+  <body>
+    <script>
+      /**
+       * Parse a newline-separated ingredient list using the Spoonacular API,
+       * then estimate overall nutrition using the guessNutrition endpoint.
+       *
+       * @param {string} ingredientText - Newline-separated ingredient list.
+       * @param {string} apiKey - Spoonacular API key.
+       * @returns {object} Nutrition breakdown or error.
+       */
+      async function analyzeNutrition(ingredientText, apiKey) {
+        // Step 1: Parse ingredients to get canonical names
+        const parseUrl =
+          "https://api.spoonacular.com/recipes/parseIngredients?" +
+          "apiKey=" + encodeURIComponent(apiKey);
+
+        const parseResponse = await fetch(parseUrl, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/x-www-form-urlencoded",
+          },
+          body:
+            "ingredientList=" +
+            encodeURIComponent(ingredientText) +
+            "&servings=1&includeNutrition=true",
+        });
+
+        if (!parseResponse.ok) {
+          const errText = await parseResponse.text();
+          throw new Error(
+            "Spoonacular parseIngredients failed (HTTP " +
+              parseResponse.status +
+              "): " +
+              errText
+          );
+        }
+
+        const parsed = await parseResponse.json();
+
+        if (!Array.isArray(parsed) || parsed.length === 0) {
+          throw new Error(
+            "Could not parse any ingredients. Please check the format."
+          );
+        }
+
+        // Step 2: Aggregate nutrition from parseIngredients response
+        // When includeNutrition=true, each parsed ingredient has a `nutrition`
+        // object with a `nutrients` array containing detailed macro info.
+        let totalCalories = 0;
+        let totalProtein = 0;
+        let totalFat = 0;
+        let totalCarbs = 0;
+        let totalFiber = 0;
+        let totalSugar = 0;
+
+        const ingredientDetails = [];
+
+        for (const item of parsed) {
+          const itemCals = findNutrient(item, "Calories");
+          const itemProtein = findNutrient(item, "Protein");
+          const itemFat = findNutrient(item, "Fat");
+          const itemCarbs = findNutrient(item, "Carbohydrates");
+          const itemFiber = findNutrient(item, "Fiber");
+          const itemSugar = findNutrient(item, "Sugar");
+
+          totalCalories += itemCals;
+          totalProtein += itemProtein;
+          totalFat += itemFat;
+          totalCarbs += itemCarbs;
+          totalFiber += itemFiber;
+          totalSugar += itemSugar;
+
+          ingredientDetails.push({
+            name: item.name || item.originalName || "Unknown",
+            amount: item.amount,
+            unit: item.unit,
+            calories: round(itemCals),
+            protein: round(itemProtein) + "g",
+            fat: round(itemFat) + "g",
+            carbs: round(itemCarbs) + "g",
+          });
+        }
+
+        // Step 3: Also call guessNutrition as a cross-reference estimate
+        const ingredientNames = parsed.map((i) => i.name || i.originalName).join(", ");
+        let guessEstimate = null;
+
+        try {
+          const guessUrl =
+            "https://api.spoonacular.com/recipes/guessNutrition?" +
+            "apiKey=" + encodeURIComponent(apiKey) +
+            "&title=" + encodeURIComponent(ingredientNames);
+
+          const guessResponse = await fetch(guessUrl);
+
+          if (guessResponse.ok) {
+            const guessData = await guessResponse.json();
+            guessEstimate = {
+              calories: guessData.calories ? guessData.calories.value : null,
+              protein: guessData.protein
+                ? guessData.protein.value + guessData.protein.unit
+                : null,
+              fat: guessData.fat
+                ? guessData.fat.value + guessData.fat.unit
+                : null,
+              carbs: guessData.carbs
+                ? guessData.carbs.value + guessData.carbs.unit
+                : null,
+            };
+          }
+        } catch (e) {
+          // guessNutrition is a bonus; don't fail the whole skill if it errors.
+          console.warn("guessNutrition fallback failed:", e);
+        }
+
+        return {
+          totalCalories: round(totalCalories),
+          totalProtein: round(totalProtein) + "g",
+          totalFat: round(totalFat) + "g",
+          totalCarbs: round(totalCarbs) + "g",
+          totalFiber: round(totalFiber) + "g",
+          totalSugar: round(totalSugar) + "g",
+          ingredientCount: parsed.length,
+          ingredients: ingredientDetails,
+          guessEstimate: guessEstimate,
+        };
+      }
+
+      /**
+       * Find a nutrient value from a parsed ingredient item.
+       * Spoonacular nests it under nutrition.nutrients[].
+       */
+      function findNutrient(item, name) {
+        if (
+          !item.nutrition ||
+          !item.nutrition.nutrients ||
+          !Array.isArray(item.nutrition.nutrients)
+        ) {
+          return 0;
+        }
+        const nutrient = item.nutrition.nutrients.find(
+          (n) => n.name.toLowerCase() === name.toLowerCase()
+        );
+        return nutrient ? nutrient.amount : 0;
+      }
+
+      function round(val) {
+        return Math.round(val * 10) / 10;
+      }
+
+      // ---------------------------------------------------------------
+      // Entry point called by the AI Edge Gallery app.
+      // `data` is a JSON string from the LLM, `secret` is the API key.
+      // ---------------------------------------------------------------
+      window["ai_edge_gallery_get_result"] = async (data, secret) => {
+        try {
+          const jsonData = JSON.parse(data);
+
+          if (!jsonData.text || jsonData.text.trim().length === 0) {
+            return JSON.stringify({
+              error:
+                "No ingredients provided. Please provide a list of ingredients with quantities.",
+            });
+          }
+
+          if (!secret || secret.trim().length === 0) {
+            return JSON.stringify({
+              error:
+                "No Spoonacular API key provided. Please set your API key in the skill secret settings.",
+            });
+          }
+
+          const nutrition = await analyzeNutrition(jsonData.text, secret);
+
+          // Build a query string to pass data to the webview
+          const params = new URLSearchParams();
+          params.set("data", JSON.stringify(nutrition));
+
+          return JSON.stringify({
+            result:
+              "Calories: " + nutrition.totalCalories + " kcal | " +
+              "Protein: " + nutrition.totalProtein + " | " +
+              "Fat: " + nutrition.totalFat + " | " +
+              "Carbs: " + nutrition.totalCarbs + " | " +
+              "Fiber: " + nutrition.totalFiber + " | " +
+              "Sugar: " + nutrition.totalSugar +
+              "\n\nIngredient breakdown:\n" +
+              nutrition.ingredients
+                .map(
+                  (i) =>
+                    "- " + i.name + " (" + i.amount + " " + i.unit + "): " +
+                    i.calories + " kcal, " + i.protein + " protein, " +
+                    i.fat + " fat, " + i.carbs + " carbs"
+                )
+                .join("\n"),
+            webview: {
+              url: "webview.html?" + params.toString(),
+              aspectRatio: 0.8,
+            },
+          });
+        } catch (e) {
+          console.error(e);
+          return JSON.stringify({
+            error: "Failed to analyze nutrition: " + e.message,
+          });
+        }
+      };
+    </script>
+  </body>
+</html>
